@@ -201,13 +201,19 @@ MODBUS_API int modbus_set_debug(modbus_t *ctx, int flag);
 MODBUS_API const char *modbus_strerror(int errnum);
 
 MODBUS_API int modbus_read_bits(modbus_t *ctx, int addr, int nb, uint8_t *dest);
+MODBUS_API int modbus_read_bits_send(modbus_t *ctx, int addr, int nb);
 MODBUS_API int modbus_read_input_bits(modbus_t *ctx, int addr, int nb, uint8_t *dest);
+MODBUS_API int modbus_read_input_bits_send(modbus_t *ctx, int addr, int nb);
 MODBUS_API int modbus_read_registers(modbus_t *ctx, int addr, int nb, uint16_t *dest);
+MODBUS_API int modbus_read_registers_send(modbus_t *ctx, int addr, int nb);
 MODBUS_API int modbus_read_input_registers(modbus_t *ctx, int addr, int nb, uint16_t *dest);
+MODBUS_API int modbus_read_input_registers_send(modbus_t *ctx, int addr, int nb);
 MODBUS_API int modbus_write_bit(modbus_t *ctx, int coil_addr, int status);
 MODBUS_API int modbus_write_register(modbus_t *ctx, int reg_addr, int value);
 MODBUS_API int modbus_write_bits(modbus_t *ctx, int addr, int nb, const uint8_t *data);
+MODBUS_API int modbus_write_bits_send(modbus_t *ctx, int addr, int nb, const uint8_t *data);
 MODBUS_API int modbus_write_registers(modbus_t *ctx, int addr, int nb, const uint16_t *data);
+MODBUS_API int modbus_write_registers_send(modbus_t *ctx, int addr, int nb, const uint16_t *data);
 MODBUS_API int modbus_mask_write_register(modbus_t *ctx, int addr, uint16_t and_mask, uint16_t or_mask);
 MODBUS_API int modbus_write_and_read_registers(modbus_t *ctx, int write_addr, int write_nb,
                                                const uint16_t *src, int read_addr, int read_nb,
@@ -227,8 +233,11 @@ MODBUS_API void modbus_mapping_free(modbus_mapping_t *mb_mapping);
 MODBUS_API int modbus_send_raw_request(modbus_t *ctx, uint8_t *raw_req, int raw_req_length);
 
 MODBUS_API int modbus_receive(modbus_t *ctx, uint8_t *req);
-
+MODBUS_API int modbus_receive_header(modbus_t *ctx, uint8_t *rsp);
+MODBUS_API int modbus_master_receive_body(modbus_t *ctx, uint8_t *rsp);
 MODBUS_API int modbus_receive_confirmation(modbus_t *ctx, uint8_t *rsp);
+
+MODBUS_API int modbus_extract_response_data(modbus_t *ctx, uint8_t *rsp, uint16_t rsplen, uint8_t* data);
 
 MODBUS_API int modbus_reply(modbus_t *ctx, const uint8_t *req,
                             int req_length, modbus_mapping_t *mb_mapping);

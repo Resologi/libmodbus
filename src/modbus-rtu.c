@@ -118,6 +118,11 @@ static int _modbus_rtu_build_request_basis(modbus_t *ctx, int function,
     return _MODBUS_RTU_PRESET_REQ_LENGTH;
 }
 
+static int _modbus_rtu_get_request_nb(modbus_t *ctx, uint8_t *req)
+{
+    assert(ctx->slave != -1);
+    return (req[5] << 8) + req[5];
+}
 /* Builds a RTU response header */
 static int _modbus_rtu_build_response_basis(sft_t *sft, uint8_t *rsp)
 {
@@ -1195,6 +1200,7 @@ const modbus_backend_t _modbus_rtu_backend = {
     MODBUS_RTU_MAX_ADU_LENGTH,
     _modbus_set_slave,
     _modbus_rtu_build_request_basis,
+    _modbus_rtu_get_request_nb,
     _modbus_rtu_build_response_basis,
     _modbus_rtu_prepare_response_tid,
     _modbus_rtu_send_msg_pre,

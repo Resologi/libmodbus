@@ -123,6 +123,10 @@ static int _modbus_tcp_build_request_basis(modbus_t *ctx, int function,
     return _MODBUS_TCP_PRESET_REQ_LENGTH;
 }
 
+static int _modbus_tcp_get_request_nb(modbus_t *ctx, uint8_t *req)
+{
+    return (req[10] << 8) + req[11];
+}
 /* Builds a TCP response header */
 static int _modbus_tcp_build_response_basis(sft_t *sft, uint8_t *rsp)
 {
@@ -174,6 +178,14 @@ static ssize_t _modbus_tcp_send(modbus_t *ctx, const uint8_t *req, int req_lengt
 
 static int _modbus_tcp_receive(modbus_t *ctx, uint8_t *req) {
     return _modbus_receive_msg(ctx, req, MSG_INDICATION);
+}
+
+static int _modbus_tcp_receive_header(modbus_t *ctx, uint8_t *req) {
+    return _modbus_receive_msg_header(ctx, req, MSG_INDICATION);
+}
+
+static int _modbus_tcp_receive_body(modbus_t *ctx, uint8_t *req, msg_type_t msg_type) {
+    return _modbus_receive_msg_body(ctx, req, msg_type);
 }
 
 static ssize_t _modbus_tcp_recv(modbus_t *ctx, uint8_t *rsp, int rsp_length) {
@@ -708,6 +720,8 @@ static int _modbus_tcp_select(modbus_t *ctx, fd_set *rset, struct timeval *tv, i
 {
     int s_rc;
     while ((s_rc = select(ctx->s+1, rset, NULL, NULL, tv)) == -1) {
+        if (ctx->async && s_rc == 0)
+            break;
         if (errno == EINTR) {
             if (ctx->debug) {
                 fprintf(stderr, "A non blocked signal was caught\n");
@@ -720,7 +734,7 @@ static int _modbus_tcp_select(modbus_t *ctx, fd_set *rset, struct timeval *tv, i
         }
     }
 
-    if (s_rc == 0) {
+    if (s_rc == 0 && !ctx->async) {
         errno = ETIMEDOUT;
         return -1;
     }
@@ -740,6 +754,7 @@ const modbus_backend_t _modbus_tcp_backend = {
     MODBUS_TCP_MAX_ADU_LENGTH,
     _modbus_set_slave,
     _modbus_tcp_build_request_basis,
+    _modbus_tcp_get_request_nb,
     _modbus_tcp_build_response_basis,
     _modbus_tcp_prepare_response_tid,
     _modbus_tcp_send_msg_pre,
@@ -752,7 +767,9 @@ const modbus_backend_t _modbus_tcp_backend = {
     _modbus_tcp_close,
     _modbus_tcp_flush,
     _modbus_tcp_select,
-    _modbus_tcp_free
+    _modbus_tcp_free,
+    _modbus_tcp_receive_header,
+    _modbus_tcp_receive_body
 };
 
 
@@ -763,6 +780,7 @@ const modbus_backend_t _modbus_tcp_pi_backend = {
     MODBUS_TCP_MAX_ADU_LENGTH,
     _modbus_set_slave,
     _modbus_tcp_build_request_basis,
+    _modbus_tcp_get_request_nb,
     _modbus_tcp_build_response_basis,
     _modbus_tcp_prepare_response_tid,
     _modbus_tcp_send_msg_pre,
@@ -775,7 +793,9 @@ const modbus_backend_t _modbus_tcp_pi_backend = {
     _modbus_tcp_close,
     _modbus_tcp_flush,
     _modbus_tcp_select,
-    _modbus_tcp_free
+    _modbus_tcp_free,
+    _modbus_tcp_receive_header,
+    _modbus_tcp_receive_body
 };
 
 modbus_t* modbus_new_tcp(const char *ip, int port)
@@ -810,6 +830,7 @@ modbus_t* modbus_new_tcp(const char *ip, int port)
     ctx->backend = &_modbus_tcp_backend;
 
     ctx->backend_data = (modbus_tcp_t *)malloc(sizeof(modbus_tcp_t));
+    ctx->async = 0;
     if (ctx->backend_data == NULL) {
         modbus_free(ctx);
         errno = ENOMEM;
@@ -862,6 +883,7 @@ modbus_t* modbus_new_tcp_pi(const char *node, const char *service)
     ctx->backend = &_modbus_tcp_pi_backend;
 
     ctx->backend_data = (modbus_tcp_pi_t *)malloc(sizeof(modbus_tcp_pi_t));
+    ctx->async = 0;
     if (ctx->backend_data == NULL) {
         modbus_free(ctx);
         errno = ENOMEM;
@@ -915,4 +937,55 @@ modbus_t* modbus_new_tcp_pi(const char *node, const char *service)
     ctx_tcp_pi->t_id = 0;
 
     return ctx;
+}
+
+void modbus_tcp_set_tid(modbus_t *ctx, uint16_t tid)
+{
+    if (ctx == NULL) {
+        return;
+    }
+    
+    if (ctx->backend->backend_type == _MODBUS_BACKEND_TYPE_TCP)
+    {
+        modbus_tcp_t *ctx_tcp = ctx->backend_data;
+        ctx_tcp->t_id = tid;
+    }
+}
+
+uint16_t modbus_tcp_get_tid(modbus_t *ctx)
+{
+    if (ctx == NULL) {
+        return 0;
+    }
+    
+    if (ctx->backend->backend_type == _MODBUS_BACKEND_TYPE_TCP)
+    {
+        modbus_tcp_t *ctx_tcp = ctx->backend_data;
+        return ctx_tcp->t_id;
+    }
+    return 0;
+}
+
+void modbus_tcp_set_async(modbus_t *ctx, int bAsync)
+{
+    if (ctx == NULL) {
+        return ;
+    }
+    if (ctx->backend->backend_type == _MODBUS_BACKEND_TYPE_TCP)
+    {
+        ctx->async = bAsync;
+    }
+}
+
+int modbus_tcp_get_response_slave(modbus_t *ctx, uint8_t *resp)
+{
+    if (ctx == NULL) {
+        return -1;
+    }
+    
+    if (ctx->backend->backend_type == _MODBUS_BACKEND_TYPE_TCP)
+    {
+        return resp[ctx->backend->header_length - 1];
+    }
+    return -1;
 }

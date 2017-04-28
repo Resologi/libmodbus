@@ -72,6 +72,7 @@ typedef struct _modbus_backend {
     int (*set_slave) (modbus_t *ctx, int slave);
     int (*build_request_basis) (modbus_t *ctx, int function, int addr,
                                 int nb, uint8_t *req);
+    int (*get_request_nb)(modbus_t *ctx, uint8_t *req);
     int (*build_response_basis) (sft_t *sft, uint8_t *rsp);
     int (*prepare_response_tid) (const uint8_t *req, int *req_length);
     int (*send_msg_pre) (uint8_t *req, int req_length);
@@ -87,6 +88,8 @@ typedef struct _modbus_backend {
     int (*flush) (modbus_t *ctx);
     int (*select) (modbus_t *ctx, fd_set *rset, struct timeval *tv, int msg_length);
     void (*free) (modbus_t *ctx);
+    int (*receive_header) (modbus_t *ctx, uint8_t *req);
+    int (*receive_body) (modbus_t *ctx, uint8_t *req, msg_type_t msg_type);
 } modbus_backend_t;
 
 struct _modbus {
@@ -100,11 +103,15 @@ struct _modbus {
     struct timeval byte_timeout;
     const modbus_backend_t *backend;
     void *backend_data;
+    int async;
+    uint8_t last_req_header[_MIN_REQ_LENGTH];
 };
 
 void _modbus_init_common(modbus_t *ctx);
 void _error_print(modbus_t *ctx, const char *context);
 int _modbus_receive_msg(modbus_t *ctx, uint8_t *msg, msg_type_t msg_type);
+int _modbus_receive_msg_header(modbus_t *ctx, uint8_t *msg, msg_type_t msg_type);
+int _modbus_receive_msg_body(modbus_t *ctx, uint8_t *msg, msg_type_t msg_type);
 
 #ifndef HAVE_STRLCPY
 size_t strlcpy(char *dest, const char *src, size_t dest_size);

@@ -47,6 +47,11 @@ MODBUS_API modbus_t* modbus_new_tcp_pi(const char *node, const char *service);
 MODBUS_API int modbus_tcp_pi_listen(modbus_t *ctx, int nb_connection);
 MODBUS_API int modbus_tcp_pi_accept(modbus_t *ctx, int *s);
 
+MODBUS_API void modbus_tcp_set_tid(modbus_t *ctx, uint16_t tid);
+MODBUS_API uint16_t modbus_tcp_get_tid(modbus_t *ctx);
+MODBUS_API void modbus_tcp_set_async(modbus_t *ctx, int bAsync);
+
+MODBUS_API int modbus_tcp_get_response_slave(modbus_t *ctx, uint8_t *resp);
 MODBUS_END_DECLS
 
 #endif /* MODBUS_TCP_H */
